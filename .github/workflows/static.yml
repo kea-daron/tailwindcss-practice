@@ -1,0 +1,58 @@
+name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Move files to root
+        run: |
+          # Move the contents of the src folder to the root
+          mv src/* .
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Send email notification on success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465  # Use port 465 for SSL/TLS
+          username: ${{ secrets.GMAIL_USERNAME }}  # Use GitHub Secret
+          password: ${{ secrets.GMAIL_PASSWORD }}  # Use GitHub Secret
+          subject: "Deployment Successful - GitHub Pages"
+          body: |
+            Your deployment to GitHub Pages was successful!
+            URL: ${{ steps.deployment.outputs.page_url }}
+          to: muyleanging@gmail.com
+          from: ${{ secrets.GMAIL_USERNAME }}  # Use GitHub Secret
+          secure: true  # Use SSL/TLS
